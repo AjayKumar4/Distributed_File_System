@@ -14,7 +14,7 @@ file_system_manager = dfs_server_filesystem_model.FileSystemManager('FileSystemD
 def create_server_socket():
     # create socket  and initialise to localhost:8000
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_address = ('127.0.0.1', port_number)
+    server_address = (ip_address, port_number)
     print("starting up on %s port %s" % server_address)
     # bind socket to server address and wait for incoming connections4
     sock.bind(server_address)
@@ -23,13 +23,14 @@ def create_server_socket():
     while True:
         # sock.accept returns a 2 element tuple
         connection, client_address = sock.accept()
-        # print "Connection from %s, %s\n" % connection, client_address
+        #print("Connection from %s, %s\n" % connection, client_address)
         # Hand the client interaction off to a seperate thread
         server_thread_pool.add_task(
             start_client_interaction,
             connection,
             client_address
         )
+
 
 
 def start_client_interaction(connection, client_address):
@@ -53,19 +54,19 @@ def start_client_interaction(connection, client_address):
             elif split_data[0] == "write":
                 write(connection, split_data, client_id)
             elif split_data[0] == "delete":
-                break;
+                delete(connection, split_data, client_id)
             elif split_data[0] == "lock":
-                break;
+                lock(connection, split_data, client_id)
             elif split_data[0] == "release":
-                break;
+                release(connection, split_data, client_id)
             elif split_data[0] == "mkdir":
-                break;
+                mkdir(connection, split_data, client_id)
             elif split_data[0] == "rmdir":
-                break;
+                rmdir(connection, split_data, client_id)
             elif split_data[0] == "pwd":
-                break;
+                pwd(connection, split_data, client_id)
             elif split_data[0] == "exit":
-                break;
+                exit(connection, split_data, client_id)
             else:
                 error_response(connection, 1)
     except:
@@ -94,7 +95,7 @@ def cd(connection, split_data, client_id):
     if len(split_data) == 2:
         res = file_system_manager.change_directory(split_data[1], client_id)
         response = ""
-        if res  == 0:
+        if res == 0:
             response = "changed directory to %s" % split_data[1]
         elif res == 1:
             response = "directory %s doesn't exist" % split_data[1]
@@ -138,6 +139,87 @@ def write(connection, split_data, client_id):
     else:
         error_response(connection, 1)
 
+def delete(connection, split_data, client_id):
+    if len(split_data) == 2:
+        res = file_system_manager.delete_file(client_id, split_data[1])
+        response = ""
+        if res == 0:
+            response = "delete successfull"
+        elif res == 1:
+            response = "file locked"
+        elif res == 2:
+            response = "use rmdir to delete a directory"
+        elif res == 3:
+            response = "file doesn't exist"
+        connection.sendall(response.encode())
+    else:
+        error_response(connection, 1)
+
+def lock(connection, split_data, client_id):
+    if len(split_data) == 2:
+        client = file_system_manager.get_active_client(client_id)
+        res = file_system_manager.lock_item(client, split_data[1])
+        response = ""
+        if res == 0:
+            response = "file locked"
+        elif res == 1:
+            response = "file already locked"
+        elif res == 2:
+            response = "file doesn't exist"
+        elif res == 3:
+            response = "locking directories is not supported"
+        connection.sendall(response.encode())
+    else:
+        error_response(connection, 1)
+
+def release(connection, split_data, client_id):
+    if len(split_data) == 2:
+        client = file_system_manager.get_active_client(client_id)
+        res = file_system_manager.release_item(client, split_data[1])
+        if res == 0:
+            response = split_data[1] + " released"
+        elif res == -1:
+            response = "you do not hold the lock for %s" % split_data[1]
+        connection.sendall(response.encode())
+    else:
+        error_response(connection, 1)
+
+def mkdir(connection, split_data, client_id):
+    if len(split_data) == 2:
+        response = ""
+        res = file_system_manager.make_directory(client_id, split_data[1])
+        if res == 0:
+            response = "new directory %s created" % split_data[1]
+        elif res == 1:
+            response = "file of same name exists"
+        elif res == 2:
+            response = "directory of same name exists"
+        connection.sendall(response.encode())
+    else:
+        error_response(connection, 1)
+
+def rmdir(connection, split_data, client_id):
+    if len(split_data) == 2:
+        response = ""
+        res = file_system_manager.remove_directory(client_id, split_data[1])
+        if res == -1:
+            response = "%s doesn't exist" % split_data[1]
+        elif res == 0:
+            response = "%s removed" % split_data[1]
+        elif res == 1:
+            response = "%s is a file" % split_data[1]
+        elif res == 2:
+            response = "directory has locked contents"
+        connection.sendall(response.encode())
+    else:
+        error_response(connection, 1)
+
+def pwd(connection, split_data, client_id):
+    if len(split_data) == 1:
+        response = file_system_manager.get_working_dir(client_id)
+        connection.sendall(response.encode())
+    else:
+        error_response(connection, 1)
 
 def exit(connection, split_data, client_id):
     if len(split_data) == 1:

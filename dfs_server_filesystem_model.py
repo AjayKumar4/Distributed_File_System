@@ -43,7 +43,6 @@ class Client:
         print("id: %d" % self.id)
         print("dir_level: %d" % self.dir_level)
         print("")
-
 class FileSystemManager:
 
     # List for storing active clients
@@ -124,7 +123,7 @@ class FileSystemManager:
         return False
 
     # disconnect client from server
-    def disconnect_client(self, connection, client_id):
+    def disconnect_client(self,connection, client_id):
         # get client
         client = self.get_active_client(client_id)
         # remove client from active clients
@@ -217,7 +216,78 @@ class FileSystemManager:
             file_path = file_path + "%s/" % path_element
         return file_path
 
+    #
+    # Functions for interacting with locking
+    #
 
+    # Locks an item if it is not locked
+    # Return 0 : Item was locked
+    # Return 1 : Item was already locked
+    # Return 2 : Item doesn't exist
+    # Return 3 : Item is a directory
+    def lock_item(self, client, item_name):
+        file_path = self.resolve_path(client.id, item_name)
+        # if item is not a file or doesnt exist exit
+        item_type = self.item_exists(client.id, item_name)
+        if item_type == -1:
+            return 2
+        elif item_type == 1:
+            return 3
+        if self.check_lock(client, item_name) ==  True:
+            return 1
+        else:
+            lock_timestamp = datetime.datetime.now()
+            lock_record = (client.id, lock_timestamp, file_path)
+            self.locked_files.append(lock_record)
+            self.add_event("lock " + file_path)
+            return 0
+
+    # Unlocks an item if it was locked
+    def release_item(self, client, item_name):
+        file_path = self.resolve_path(client.id, item_name)
+        i = 0
+        item_released = False
+        for locked_file in self.locked_files:
+            if file_path == locked_file[2]:
+                if client.id == locked_file[0]:
+                    self.locked_files.pop(i)
+                    self.add_event("release " + file_path)
+                    item_released = True
+            i = i + 1
+        if item_released:
+            return 0
+        else:
+            return -1
+
+    # Checks if an item is locked
+    # Return True : Item is locked
+    # Returns False : Item is not locked
+    def check_lock(self, client, item_name):
+        file_path = self.resolve_path(client.id, item_name)
+        for locked_file in self.locked_files:
+            if locked_file[2] == file_path:
+                return True
+        return False
+
+    # Traverses the list of locked items and releases locked item if
+    # client does not exist
+    # Run in a thread initialized in the __init__ function
+    def auto_release(self):
+        while True:
+            # auto release occurs every minute
+            time.sleep(60)
+            new_locked_file_list = []
+            for locked_file in self.locked_files:
+                for client in self.active_clients:
+                    if locked_file[0] == client.id:
+                        new_locked_file_list.append(locked_file)
+            self.locked_files = new_locked_file_list
+            self.add_event("lock auto-release")
+
+    def log_locks(self):
+        print("LID\tTIME\t\t\t\tPATH")
+        for locked_file in self.locked_files:
+            print("%d\t%s\t%s" % locked_file)
 
     #
     # Functions for interacting with items
@@ -286,9 +356,76 @@ class FileSystemManager:
         self.release_item(client, item_name)
         return 0
 
+    # Deletes a file
+    # Return 0 : Delete successfull
+    # Return 1 : Delete unsuccessfull, File locked
+    # Return 2 : Delete unsuccessfull, File is a Directory
+    # Return 3 : Delete unsuccessfull, File Doesn't exist
+    def delete_file(self, client_id, item_name):
+        item_type = self.item_exists(client_id, item_name)
+        # exit if the item does not exist
+        if item_type == -1:
+            return 3
+        # exit if the item is a directory
+        if item_type == 1:
+            return 2
+        # lock_item
+        client = self.get_active_client(client_id)
+        lock_res = self.lock_item(client, item_name)
+        # Exit if file is locked
+        if lock_res == 1:
+            return 1
+        # delete file
+        file_path = self.resolve_path(client_id, item_name)
+        os.remove(file_path)
+        # add delete event
+        self.add_event("delete " + file_path)
+        # release it
+        self.release_item(client, item_name)
+        return 0
 
+    # Makes new directory in current directory
+    # return 0 : successfull
+    # return 1 : file of same name exists
+    # return 2 : directory of same name exists
+    def make_directory(self, client_id, directory_name):
+        path = self.resolve_path(client_id, directory_name)
+        exists = self.item_exists(client_id, directory_name)
+        # is file
+        if exists == 0:
+            return 1
+        # is dir
+        elif exists == 1:
+            return 2
+        # doesn't exist
+        elif -1:
+            os.makedirs(path)
+            self.add_event("mkdir " + path)
+            return 0
 
-
+    # remove directory
+    # return -1 : directory doesn't exist
+    # return 0 : successfull
+    # return 1 : is a file
+    # return 2 : directory has locked contents
+    def remove_directory(self, client_id, directory_name):
+        path = self.resolve_path(client_id, directory_name)
+        item_type = self.item_exists(client_id, directory_name)
+        if item_type == -1:
+            return -1
+        elif item_type == 0:
+            return 1
+        elif item_type == 1:
+            directory_has_locked_elements = False
+            for lock_record in self.locked_files:
+                if lock_record[2][0:len(path)] == path:
+                    directory_has_locked_elements = True
+            if directory_has_locked_elements:
+                return 2
+            else:
+                shutil.rmtree(path)
+                self.add_event("rmdir " + path)
+                return 0
 
     #
     # Testing functions
