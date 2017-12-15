@@ -2,15 +2,28 @@ import socket
 import threadpool
 import time
 import os
+import sys
 
 # this is a multithreaded client program that was used to test
 # the server code
 
 client_thread_pool = threadpool.ThreadPool(5)
 
-ip_address = socket.gethostbyname(socket.gethostname())
 
-port_num = 1024
+# checks whether sufficient arguments have been provided
+if len(sys.argv) != 3:
+	print ("Correct usage: script, IP address, port number")
+	exit()
+
+# takes the first argument from command prompt as IP address
+ip_address = str(sys.argv[1])
+
+# takes second argument from command prompt as port number
+port_num = int(sys.argv[2])
+
+#ip_address = socket.gethostbyname(socket.gethostname())
+
+#port_num = 1024
 
 #each 1 is 10 seconds
 cache_time = 2
@@ -27,6 +40,7 @@ def connect_to_server_userin():
     server_address = (ip_address, port_num)
     print("connecting to %s on port %s\n" % server_address)
     sock.connect(server_address)
+    print("connected to %s on port %s\n" % server_address)
 
     client_thread_pool.add_task(
         get_server_response,
