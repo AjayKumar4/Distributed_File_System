@@ -2,11 +2,11 @@
 
 To run the Distributed_File_System, First need to Run dfs_server followed by dfs_client. The dfs_server and dfs_client code can be executed using an IDE such as PyCharm, or by performing in the terminal . dfs_client code can be executed multiple time in the different terminal.
 
-To run the Server
+To run the Server in Python 3.6+
 
 python ./dfs_server.py
 
-To run the Client
+To run the Client in Python 3.6+
 
 python ./dfs_client.py
 
