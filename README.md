@@ -38,20 +38,16 @@ Following Features are implemented :
 
 + Distributed transparent file access
 + Directory Service
-
-		The current position of each client is stored in their object on the server. There are 			functions that resolve paths
+    -The current position of each client is stored in their object on the server. There are functions that resolve paths
 + Caching (in the client)
-
-		a list of recently viewed items is stored
-		a thread is charged with making sure items are discarded after a set  period of time.
+    -a list of recently viewed items is stored
+    -a thread is charged with making sure items are discarded after a set  period of time.
 + Locking
-
-		Items being written to or deleted require a lock
-		Locks are stored in a list on the server
-		A thread has the task of checking that all of the locks have an 	owner who is active on the 		server. This process runs every minute.
+    -Items being written to or deleted require a lock
+    -Locks are stored in a list on the server
+    -A thread has the task of checking that all of the locks have an owner who is active on the server. This process runs every minute.
 + Logging
-
-		All events are logged on the server and can be viewed
+    -All events are logged on the server and can be viewed
 
 
 threadpool.py file is downloaded from 
