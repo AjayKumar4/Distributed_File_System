@@ -12,39 +12,39 @@ There are a number of commands that can be run on the client that will have suit
 
 ls - list files and directories in the current directory
 
-ls directorypath - list files in specified directory
+ls directorypath 	- list files in specified directory
 
-cd directorypath - move to specified directory
+cd directorypath	 - move to specified directory
 
-up - move up one directory
+up			 - move up one directory
 
-read filepath - read the contents of a file
+read filepath 		- read the contents of a file
 
-write file_name - writes file from current directory on local machine to the current directory on the remote server
+write file_name 	- writes file from current directory on local machine to the current directory on the remote server
 
-mkdir filename - make a directory at the following path
+mkdir filename       	 - make a directory at the following path
 
-rmdir filename - delete a directory and its contents
+rmdir filename 		- delete a directory and its contents
 
-lock filename - locks the specified file
+lock filename		 - locks the specified file
 
-release filename - releases a specified file
+release filename 	- releases a specified file
 
-exit - exit the client
+exit 			- exit the client
 
 Following Features are implemented :
 
-Distributed transparent file access
-Directory Service
-		The current position of each client is stored in their object on the server. There are functions that resolve paths
-Caching (in the client)
++ Distributed transparent file access
++ Directory Service
+		The current position of each client is stored in their object on the server. There are 			functions that resolve paths
++ Caching (in the client)
 		a list of recently viewed items is stored
 		a thread is charged with making sure items are discarded after a set  period of time.
-Locking
++ Locking
 		Items being written to or deleted require a lock
 		Locks are stored in a list on the server
 		A thread has the task of checking that all of the locks have an 	owner who is active on the 		server. This process runs every minute.
-Logging
++ Logging
 		All events are logged on the server and can be viewed
 
 
